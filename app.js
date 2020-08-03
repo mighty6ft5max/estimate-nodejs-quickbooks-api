@@ -1,0 +1,131 @@
+"use strict";
+
+require("dotenv").config();
+
+/**
+ * Require the dependencies
+ * @type {*|createApplication}
+ */
+
+var { CLIENT_ID, CLIENT_SECRET, ENVIRONMENT, PORT, REDIRECT_URI } = process.env;
+
+var express = require("express");
+var app = express();
+var path = require("path");
+var OAuthClient = require("intuit-oauth");
+var bodyParser = require("body-parser");
+
+/**
+ * Configure View and Handlebars
+ */
+app.use(bodyParser.urlencoded({ extended: true }));
+app.use(express.static(path.join(__dirname, "/public")));
+app.engine("html", require("ejs").renderFile);
+app.set("view engine", "html");
+app.use(bodyParser.json());
+
+var urlencodedParser = bodyParser.urlencoded({ extended: false });
+
+/**
+ * App Variables
+ * @type {null}
+ */
+var oauth2_token_json = null,
+  auth_vars = {
+    clientId: CLIENT_ID,
+    clientSecret: CLIENT_SECRET,
+    environment: ENVIRONMENT,
+    redirectUri: REDIRECT_URI,
+  };
+
+/**
+ * Instantiate new Client
+ * @type {OAuthClient}
+ */
+
+var oauthClient = new OAuthClient(auth_vars);
+
+/**
+ * Home Route
+ */
+
+app.get("/", function (req, res) {
+  res.render("index");
+});
+
+/**
+ * Get the AuthorizeUri
+ */
+
+app.get("/authUri", function (req, res) {
+  var authUri = oauthClient.authorizeUri({
+    scope: [OAuthClient.scopes.Accounting],
+    state: "intuit-test",
+  });
+  res.send(authUri);
+});
+
+/**
+ * Handle the callback to extract the `Auth Code` and exchange them for `Bearer-Tokens`
+ */
+
+app.get("/callback", function (req, res) {
+  oauthClient
+    .createToken(req.url)
+    .then(function (authResponse) {
+      oauth2_token_json = JSON.stringify(authResponse.getJson(), null, 2);
+    })
+    .catch(function (e) {
+      console.error(e);
+    });
+
+  res.send("");
+});
+
+/**
+ * Display the token : CAUTION : JUST for sample purposes
+ */
+
+app.get("/retrieveToken", function (req, res) {
+  res.send(oauth2_token_json);
+});
+
+app.post("/getEstimates", function (req, res) {
+  var companyID = oauthClient.getToken().realmId,
+    { queryType, start, end } = req.body;
+
+  var url =
+    oauthClient.environment == "sandbox"
+      ? OAuthClient.environment.sandbox
+      : OAuthClient.environment.production;
+
+  var selectStatement =
+      queryType === "single"
+        ? `SELECT * from ESTIMATE WHERE DocNumber = '${start}'`
+        : `SELECT * from ESTIMATE WHERE DocNumber >= '${start}' AND DocNumber <= '${end}'`,
+    estimateQueryString =
+      url +
+      "v3/company/" +
+      companyID +
+      "/query?query=" +
+      selectStatement +
+      "&minorversion=52";
+
+  oauthClient
+    .makeApiCall({
+      url: estimateQueryString,
+    })
+    .then(function (authResponse) {
+      // console.log(
+      //   "The response for API call is :" + JSON.stringify(authResponse)
+      // );
+      res.send(JSON.parse(authResponse.text()));
+    })
+    .catch(function (e) {
+      console.error(e);
+    });
+});
+
+const server = app.listen(PORT || 8000, () => {
+  console.log(`Server listening on port ${server.address().port}`);
+});

@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <link
+      rel="apple-touch-icon icon shortcut"
+      type="image/png"
+      href="https://plugin.intuitcdn.net/sbg-web-shell-ui/6.3.0/shell/harmony/images/QBOlogo.png"
+    />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/2.1.4/jquery.min.js"></script>
+    <link
+      rel="stylesheet"
+      href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css"
+      integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T"
+      crossorigin="anonymous"
+    />
+    <link
+      rel="stylesheet"
+      href="https://netdna.bootstrapcdn.com/bootstrap/3.1.1/css/bootstrap-theme.min.css"
+    />
+    <link rel="stylesheet" href="./css/common.css" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"
+    />
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  </head>
+  <body>
+    <div id="wrapper" class="container">
+      <h1>
+        <a href="http://developer.intuit.com">
+          <img src="./images/quickbooks_logo_vert.png" id="headerLogo" />
+        </a>
+      </h1>
+      <hr />
+      <div id="connect_button">
+        <a class="imgLink" href="#" id="authorizeUri"
+          ><img src="./images/C2QB_green_btn_lg_default.png" width="178"
+        /></a>
+      </div>
+      <hr />
+      <h2>Get Estimates</h2>
+      <p></p>
+      <form id="searchForm">
+        <fieldset>
+          <div class="container">
+            <div class="row">
+              <div class="col radio">
+                <input
+                  type="radio"
+                  id="single"
+                  name="query-type"
+                  value="single"
+                />
+                <label for="single">Single</label>
+              </div>
+              <div class="col radio">
+                <input
+                  type="radio"
+                  id="range"
+                  name="query-type"
+                  value="range"
+                />
+                <label for="range">Range</label>
+              </div>
+            </div>
+            <div id="single-field" class="row" style="display: block;">
+              <label
+                >Doc #<input
+                  class="text-field"
+                  type="text"
+                  id="single-text-field"
+                />
+              </label>
+            </div>
+            <div id="range-fields" class="row" style="display: none;">
+              <p class="helper-text">
+                <small class="text-muted"
+                  ><i>Provide beginning and ending Doc #'s.</i></small
+                >
+              </p>
+              <label
+                >Start<input
+                  class="text-field"
+                  type="text"
+                  id="range-start-text-field"
+                  style="margin-top: 0;"
+              /></label>
+              <label
+                >End<input
+                  class="text-field"
+                  type="text"
+                  id="range-end-text-field"
+              /></label>
+            </div>
+          </div>
+        </fieldset>
+      </form>
+
+      <hr />
+      <div id="getEstimates">
+        <button type="button" id="makeAPICall" class="btn btn-success">
+          Get Estimates
+        </button>
+      </div>
+      <pre id="apiCall"></pre>
+      <hr />
+      <div style="text-align: left;">
+        <p>More info:</p>
+        <ul>
+          <li>
+            <a
+              href="https://developer.intuit.com/app/developer/qbo/docs/get-started"
+              target="_blank"
+              >Get started.
+              <small class="text-muted"
+                >Create Developer account to first API call.</small
+              ></a
+            >
+          </li>
+          <li>
+            <a
+              href="https://www.npmjs.com/package/node-quickbooks"
+              target="_blank"
+              >Intuit SDK
+              <small class="text-muted"
+                >NPM - Community contributed client for nodejs.</small
+              ></a
+            >
+          </li>
+          <li>
+            <a
+              href="https://github.com/IntuitDeveloper/OAuth2.0-demo-nodejs"
+              target="_blank"
+              >Sample App
+              <small class="text-muted"
+                >NodeJS - Intuit OAuth2.0 CompanyInfo</small
+              ></a
+            >
+          </li>
+        </ul>
+      </div>
+    </div>
+
+    <script type="text/javascript">
+      (function () {
+        var queryTypes = document.querySelectorAll("[name='query-type']"),
+          singleField = document.getElementById("single-field"),
+          rangeFields = document.getElementById("range-fields");
+
+        for (var i = 0, len = queryTypes.length; i < len; i++) {
+          queryTypes[i].onclick = function () {
+            let selected = this.value;
+            if (selected === "single") {
+              singleField.style.display = "block";
+              rangeFields.style.display = "none";
+              queryType = selected;
+            } else if (selected === "range") {
+              singleField.style.display = "none";
+              rangeFields.style.display = "block";
+              queryType = selected;
+            }
+          };
+        }
+
+        function authorizeUri() {
+          $.get("/authUri", function (uri) {}).then(function (authUri) {
+            // Launch Popup using the JS window Object
+            var parameters = "location=1,width=800,height=650";
+            parameters +=
+              ",left=" +
+              (screen.width - 800) / 2 +
+              ",top=" +
+              (screen.height - 650) / 2;
+            var win = window.open(authUri, "connectPopup", parameters);
+            var pollOAuth = window.setInterval(function () {
+              try {
+                if (win.document.URL.indexOf("code") != -1) {
+                  window.clearInterval(pollOAuth);
+                  win.close();
+                  location.reload();
+                }
+              } catch (e) {
+                console.log(e);
+              }
+            }, 100);
+          });
+        }
+
+        function retrieveToken() {
+          // Generate the authUri
+          $.get("/retrieveToken", function (token) {
+            var token =
+              token != null
+                ? token
+                : "Please Authorize Using Connect to Quickbooks first !";
+            $("#accessToken").html(token);
+          });
+        }
+
+        function makeAPICall() {
+          var queryTypesFields = document.querySelectorAll(
+              "[name='query-type']"
+            ),
+            singleTextField = document.getElementById("single-text-field"),
+            rangeStartTextField = document.getElementById(
+              "range-start-text-field"
+            ),
+            rangeEndTextField = document.getElementById("range-end-text-field");
+
+          if (queryTypesFields[0].checked) {
+            $.post(
+              "/getEstimates",
+              { queryType: "single", start: singleTextField.value },
+              function (response) {
+                $("#apiCall").html(JSON.stringify(response, null, 4));
+              }
+            );
+          } else if (queryTypesFields[1].checked) {
+            $.post(
+              "/getEstimates",
+              {
+                queryType: "range",
+                start: rangeStartTextField.value,
+                end: rangeEndTextField.value,
+              },
+              function (response) {
+                $("#apiCall").html(JSON.stringify(response, null));
+              }
+            );
+          }
+        }
+
+        document
+          .getElementById("authorizeUri")
+          .addEventListener("click", function response(e) {
+            e.preventDefault();
+            authorizeUri();
+          });
+
+        document
+          .getElementById("makeAPICall")
+          .addEventListener("click", function response(e) {
+            e.preventDefault();
+            makeAPICall();
+          });
+      })();
+    </script>
+  </body>
+</html>

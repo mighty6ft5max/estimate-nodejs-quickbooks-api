@@ -1,0 +1,26 @@
+#headerLogo {
+  display: inline-block;
+  margin: 24px;
+  width: 200px;
+}
+
+#apiCall {
+  text-align: left;
+}
+
+#wrapper {
+  max-width: 500px;
+  text-align: center;
+}
+
+.text-field {
+  margin: 8px;
+}
+
+.text-muted {
+  font-style: italic;
+}
+
+.helper-text {
+  margin: 12px 0 8px;
+}

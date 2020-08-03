@@ -1,0 +1,21 @@
+{
+  "name": "Get Estimates App",
+  "version": "1.0.0",
+  "description": "Simple NodeJS application for receiving Quickbooks API Estimates by DocNumber",
+  "scripts": {
+    "start": "node app"
+  },
+  "author": "samuel.s.maxime@gmail.com",
+  "license": "MIT",
+  "homepage": "https://github.intuit.com/IntuitDeveloper/OAuth2.0-demo-nodejs",
+  "dependencies": {
+    "body-parser": "latest",
+    "dotenv": "^5.0.1",
+    "ejs": "^2.5.2",
+    "express": "^4.14.0",
+    "express-session": "^1.14.2",
+    "intuit-oauth": "^1.2.0",
+    "ngrok": "^2.2.9",
+    "path": "^0.12.7"
+  }
+}
