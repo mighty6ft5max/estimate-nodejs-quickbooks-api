@@ -39,6 +39,8 @@
         /></a>
       </div>
       <hr />
+      <div style="display: none;" id="ngrok_alert"></div>
+      <div style="display: none;" id="refresh_alert"></div>
       <h2>Get Estimates</h2>
       <p></p>
       <form id="searchForm">
@@ -47,6 +49,7 @@
             <div class="row">
               <div class="col radio">
                 <input
+                  checked="checked"
                   type="radio"
                   id="single"
                   name="query-type"
@@ -99,9 +102,20 @@
 
       <hr />
       <div id="getEstimates">
-        <button type="button" id="makeAPICall" class="btn btn-success">
-          Get Estimates
-        </button>
+        <div class="container">
+          <div class="row">
+            <div class="col">
+              <button type="button" id="refreshToken" class="btn btn-success">
+                Refresh Token
+              </button>
+            </div>
+            <div class="col">
+              <button type="button" id="makeAPICall" class="btn btn-success">
+                Get Estimates
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
       <pre id="apiCall"></pre>
       <hr />
@@ -163,28 +177,43 @@
           };
         }
 
-        function authorizeUri() {
-          $.get("/authUri", function (uri) {}).then(function (authUri) {
-            // Launch Popup using the JS window Object
-            var parameters = "location=1,width=800,height=650";
-            parameters +=
-              ",left=" +
-              (screen.width - 800) / 2 +
-              ",top=" +
-              (screen.height - 650) / 2;
-            var win = window.open(authUri, "connectPopup", parameters);
-            var pollOAuth = window.setInterval(function () {
-              try {
-                if (win.document.URL.indexOf("code") != -1) {
-                  window.clearInterval(pollOAuth);
-                  win.close();
-                  location.reload();
-                }
-              } catch (e) {
-                console.log(e);
-              }
-            }, 100);
+        function ngrokEnabled() {
+          $.get("/ngrokEnabled", function (response) {
+            if (response === "true") {
+              var ngrokAlert = document.getElementById("ngrok_alert");
+              ngrokAlert.style.display = "block";
+              ngrokAlert.innerHTML = `<div class='alert alert-primary'><h1><b>NGROK Enabled</b></h1><h3>${window.location.origin}/callback</h3><p>will be used as your callback uri. Add it your app on your <a href="https://developer.intuit.com/app/developer/dashboard" target="_blank">developer dashboard</a>.</p></div><hr />`;
+            }
           });
+        }
+
+        function authorizeUri() {
+          var jsonBody = {};
+          jsonBody.redirectUri = window.location.origin + "/callback";
+
+          $.get("/authUri", { json: jsonBody }, function (uri) {}).then(
+            function (authUri) {
+              // Launch Popup using the JS window Object
+              var parameters = "location=1,width=800,height=650";
+              parameters +=
+                ",left=" +
+                (screen.width - 800) / 2 +
+                ",top=" +
+                (screen.height - 650) / 2;
+              var win = window.open(authUri, "connectPopup", parameters);
+              var pollOAuth = window.setInterval(function () {
+                try {
+                  if (win.document.URL.indexOf("code") != -1) {
+                    window.clearInterval(pollOAuth);
+                    win.close();
+                    location.reload();
+                  }
+                } catch (e) {
+                  console.log(e);
+                }
+              }, 100);
+            }
+          );
         }
 
         function retrieveToken() {
@@ -195,6 +224,21 @@
                 ? token
                 : "Please Authorize Using Connect to Quickbooks first !";
             $("#accessToken").html(token);
+          });
+        }
+
+        function refreshToken() {
+          var jsonBody = {};
+          jsonBody.redirectUri = window.location.origin + "/callback";
+          // Generate the authUri
+          $.get("/refreshAccessToken", { json: jsonBody }, function (token) {
+            var token =
+              token != null
+                ? token
+                : "Please Authorize Using Connect to Quickbooks first !";
+            var tokenRefreshed = document.getElementById("refresh_alert");
+            tokenRefreshed.style.display = "block";
+            tokenRefreshed.innerHTML = `<div class='alert alert-warning'><h2>Token Refreshed</h2><p>${token}</p></div><hr />`;
           });
         }
 
@@ -213,7 +257,7 @@
               "/getEstimates",
               { queryType: "single", start: singleTextField.value },
               function (response) {
-                $("#apiCall").html(JSON.stringify(response, null, 4));
+                $("#apiCall").html("<hr/>" + JSON.stringify(response, null, 4));
               }
             );
           } else if (queryTypesFields[1].checked) {
@@ -239,11 +283,20 @@
           });
 
         document
+          .getElementById("refreshToken")
+          .addEventListener("click", function response(e) {
+            e.preventDefault();
+            refreshToken();
+          });
+
+        document
           .getElementById("makeAPICall")
           .addEventListener("click", function response(e) {
             e.preventDefault();
             makeAPICall();
           });
+
+        ngrokEnabled();
       })();
     </script>
   </body>

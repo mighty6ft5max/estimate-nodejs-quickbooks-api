@@ -7,14 +7,21 @@ require("dotenv").config();
  * @type {*|createApplication}
  */
 
-var { CLIENT_ID, CLIENT_SECRET, ENVIRONMENT, PORT, REDIRECT_URI } = process.env;
+var {
+  CLIENT_ID,
+  CLIENT_SECRET,
+  ENVIRONMENT,
+  NGROK_ENABLED,
+  PORT,
+  REDIRECT_URI,
+} = process.env;
 
 var express = require("express");
 var app = express();
 var path = require("path");
 var OAuthClient = require("intuit-oauth");
 var bodyParser = require("body-parser");
-
+var ngrok = NGROK_ENABLED === "true" ? require("ngrok") : null;
 /**
  * Configure View and Handlebars
  */
@@ -30,6 +37,7 @@ var urlencodedParser = bodyParser.urlencoded({ extended: false });
  * App Variables
  * @type {null}
  */
+
 var oauth2_token_json = null,
   auth_vars = {
     clientId: CLIENT_ID,
@@ -43,21 +51,35 @@ var oauth2_token_json = null,
  * @type {OAuthClient}
  */
 
-var oauthClient = new OAuthClient(auth_vars);
+var oauthClient = null;
 
 /**
  * Home Route
  */
 
 app.get("/", function (req, res) {
-  res.render("index");
+  res.render("index", { name: "did we pass it?" });
+});
+
+/**
+ * Get NGROK status
+ */
+
+app.get("/ngrokEnabled", function (req, res) {
+  res.send(NGROK_ENABLED);
 });
 
 /**
  * Get the AuthorizeUri
  */
 
-app.get("/authUri", function (req, res) {
+app.get("/authUri", urlencodedParser, function (req, res) {
+  if (!oauthClient) {
+    oauthClient = new OAuthClient({
+      ...auth_vars,
+      redirectUri: req.query.json.redirectUri,
+    });
+  }
   var authUri = oauthClient.authorizeUri({
     scope: [OAuthClient.scopes.Accounting],
     state: "intuit-test",
@@ -83,11 +105,28 @@ app.get("/callback", function (req, res) {
 });
 
 /**
- * Display the token : CAUTION : JUST for sample purposes
+ * Refresh the access-token
  */
 
-app.get("/retrieveToken", function (req, res) {
-  res.send(oauth2_token_json);
+app.get("/refreshAccessToken", urlencodedParser, function (req, res) {
+  if (!oauthClient) {
+    oauthClient = new OAuthClient({
+      ...auth_vars,
+      redirectUri: req.query.json.redirectUri,
+    });
+  }
+  oauthClient
+    .refresh()
+    .then(function (authResponse) {
+      console.log(
+        "The Refresh Token is  " + JSON.stringify(authResponse.getJson())
+      );
+      oauth2_token_json = JSON.stringify(authResponse.getJson(), null, 2);
+      res.send(oauth2_token_json);
+    })
+    .catch(function (e) {
+      console.error(e);
+    });
 });
 
 app.post("/getEstimates", function (req, res) {
@@ -128,4 +167,20 @@ app.post("/getEstimates", function (req, res) {
 
 const server = app.listen(PORT || 8000, () => {
   console.log(`Server listening on port ${server.address().port}`);
+  if (!ngrok) {
+    console.log(`See app at http://localhost:${server.address().port}`);
+  }
 });
+
+if (ngrok) {
+  console.log("NGROK is enabled");
+  async function connectNGROK() {
+    try {
+      const url = await ngrok.connect({ addr: PORT || 8000 }); //{ addr: PORT || 8000 }
+      console.log("See app at " + url);
+    } catch {
+      console.log("There was an error");
+    }
+  }
+  connectNGROK();
+}

@@ -5,7 +5,10 @@
 }
 
 #apiCall {
+  font-size: x-small;
+  max-width: 100%;
   text-align: left;
+  word-break: break-all;
 }
 
 #wrapper {
@@ -13,6 +16,36 @@
   text-align: center;
 }
 
+.alert h1 {
+  font-size: x-large;
+}
+
+.alert h2 {
+  font-size: medium;
+}
+
+.alert h3 {
+  background: lightgray;
+  border: 1px solid blue;
+  border-radius: 4px;
+  font-size: small;
+  font-weight: bold;
+  padding: 3px;
+}
+
+.alert p {
+  font-size: smaller;
+}
+
+.alert-warning p {
+  font-size: xx-small;
+  text-align: left;
+  word-break: break-all;
+}
+
+.alert a {
+  text-decoration: underline;
+}
 .text-field {
   margin: 8px;
 }
